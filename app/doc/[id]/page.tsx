@@ -10,7 +10,9 @@ import { ArrowLeft, Trash2, Check, Loader2 } from "lucide-react";
 export default function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { getDocument, updateDocument, deleteDocument, documents } = useDocuments();
+  const getDocument = useDocuments((state) => state.getDocument);
+  const updateDocument = useDocuments((state) => state.updateDocument);
+  const deleteDocument = useDocuments((state) => state.deleteDocument);
   const [mounted, setMounted] = useState(false);
   const [documentTitle, setDocumentTitle] = useState("");
   const [content, setContent] = useState("");
@@ -27,11 +29,14 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
       if (doc) {
         setDocumentTitle(doc.title);
         setContent(doc.content);
+        const text = doc.content.replace(/<[^>]*>/g, "");
+        const words = text.trim().split(/\s+/).filter(Boolean).length;
+        setWordCount(words);
       } else {
         router.push("/");
       }
     }
-  }, [mounted, id, getDocument, router, documents]);
+  }, [mounted, id, getDocument, router]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -46,24 +51,25 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
     }
   }, [documentTitle, id, mounted, updateDocument, getDocument]);
 
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      setContent(newContent);
+  useEffect(() => {
+    if (!mounted) return;
+    const doc = getDocument(id);
+    if (doc && content !== doc.content) {
       setSaveStatus("saving");
-
-      const text = newContent.replace(/<[^>]*>/g, "");
-      const words = text.trim().split(/\s+/).filter(Boolean).length;
-      setWordCount(words);
-
       const timer = setTimeout(() => {
-        updateDocument(id, { content: newContent });
+        updateDocument(id, { content });
         setSaveStatus("saved");
       }, 500);
-
       return () => clearTimeout(timer);
-    },
-    [id, updateDocument]
-  );
+    }
+  }, [content, id, mounted, updateDocument, getDocument]);
+
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent);
+    const text = newContent.replace(/<[^>]*>/g, "");
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    setWordCount(words);
+  }, []);
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this document?")) {

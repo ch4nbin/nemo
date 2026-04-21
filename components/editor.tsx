@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -59,6 +59,8 @@ interface EditorProps {
 }
 
 export function Editor({ initialContent = "", onUpdate }: EditorProps) {
+  const lastEditorContentRef = useRef(initialContent);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -74,7 +76,9 @@ export function Editor({ initialContent = "", onUpdate }: EditorProps) {
     content: initialContent,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
-      onUpdate?.(editor.getHTML());
+      const html = editor.getHTML();
+      lastEditorContentRef.current = html;
+      onUpdate?.(html);
     },
     editorProps: {
       attributes: {
@@ -84,8 +88,11 @@ export function Editor({ initialContent = "", onUpdate }: EditorProps) {
   });
 
   useEffect(() => {
-    if (editor && initialContent && editor.getHTML() !== initialContent) {
-      editor.commands.setContent(initialContent);
+    if (!editor) return;
+    if (lastEditorContentRef.current === initialContent) return;
+    if (editor.getHTML() !== initialContent) {
+      editor.commands.setContent(initialContent, false);
+      lastEditorContentRef.current = initialContent;
     }
   }, [editor, initialContent]);
 
