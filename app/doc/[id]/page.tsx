@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Editor } from "@/components/editor";
@@ -18,6 +18,11 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const [wordCount, setWordCount] = useState(0);
+  const hasLoadedDocumentRef = useRef(false);
+  const lastSavedTitleRef = useRef("");
+  const lastSavedContentRef = useRef("");
+  const titleDirtyRef = useRef(false);
+  const contentDirtyRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -25,6 +30,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     if (mounted) {
+      hasLoadedDocumentRef.current = false;
       const doc = getDocument(id);
       if (doc) {
         setDocumentTitle(doc.title);
@@ -32,6 +38,12 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
         const text = doc.content.replace(/<[^>]*>/g, "");
         const words = text.trim().split(/\s+/).filter(Boolean).length;
         setWordCount(words);
+        lastSavedTitleRef.current = doc.title;
+        lastSavedContentRef.current = doc.content;
+        titleDirtyRef.current = false;
+        contentDirtyRef.current = false;
+        setSaveStatus("idle");
+        hasLoadedDocumentRef.current = true;
       } else {
         router.push("/");
       }
@@ -39,32 +51,39 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
   }, [mounted, id, getDocument, router]);
 
   useEffect(() => {
-    if (!mounted) return;
-    const doc = getDocument(id);
-    if (doc && documentTitle !== doc.title) {
+    if (!mounted || !hasLoadedDocumentRef.current) return;
+    if (!titleDirtyRef.current) return;
+    if (documentTitle !== lastSavedTitleRef.current) {
       setSaveStatus("saving");
       const timer = setTimeout(() => {
         updateDocument(id, { title: documentTitle });
+        lastSavedTitleRef.current = documentTitle;
+        titleDirtyRef.current = false;
         setSaveStatus("saved");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [documentTitle, id, mounted, updateDocument, getDocument]);
+    titleDirtyRef.current = false;
+  }, [documentTitle, id, mounted, updateDocument]);
 
   useEffect(() => {
-    if (!mounted) return;
-    const doc = getDocument(id);
-    if (doc && content !== doc.content) {
+    if (!mounted || !hasLoadedDocumentRef.current) return;
+    if (!contentDirtyRef.current) return;
+    if (content !== lastSavedContentRef.current) {
       setSaveStatus("saving");
       const timer = setTimeout(() => {
         updateDocument(id, { content });
+        lastSavedContentRef.current = content;
+        contentDirtyRef.current = false;
         setSaveStatus("saved");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [content, id, mounted, updateDocument, getDocument]);
+    contentDirtyRef.current = false;
+  }, [content, id, mounted, updateDocument]);
 
   const handleContentChange = useCallback((newContent: string) => {
+    contentDirtyRef.current = true;
     setContent(newContent);
     const text = newContent.replace(/<[^>]*>/g, "");
     const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -103,7 +122,10 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
               <input
                 type="text"
                 value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value)}
+                onChange={(e) => {
+                  titleDirtyRef.current = true;
+                  setDocumentTitle(e.target.value);
+                }}
                 className="text-sm font-mono bg-transparent border-none focus:outline-none w-auto min-w-[120px] max-w-[400px]"
                 placeholder="Untitled"
               />
