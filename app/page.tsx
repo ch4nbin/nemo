@@ -17,7 +17,6 @@ function formatDate(date: Date) {
 
 function DocumentRow({ doc, onDelete }: { doc: Document; onDelete: () => void }) {
   const router = useRouter();
-  const [showDelete, setShowDelete] = useState(false);
 
   const preview = doc.content
     ? doc.content.replace(/<[^>]*>/g, "").slice(0, 60)
@@ -27,8 +26,6 @@ function DocumentRow({ doc, onDelete }: { doc: Document; onDelete: () => void })
     <div
       className="group flex items-center justify-between py-4 px-5 border border-border rounded-full hover:border-foreground/40 transition-colors cursor-pointer"
       onClick={() => router.push(`/doc/${doc.id}`)}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
     >
       <div className="flex items-center gap-4 min-w-0">
         <span className="text-xs font-mono text-muted-foreground tracking-[0.1em] shrink-0">
@@ -40,18 +37,17 @@ function DocumentRow({ doc, onDelete }: { doc: Document; onDelete: () => void })
         </h3>
       </div>
 
-      <div className="flex items-center gap-2 ml-4">
-        {showDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="p-2 rounded-full border border-border hover:border-foreground/50 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
+      <div className="flex items-center justify-end gap-2 ml-4 min-w-[72px]">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="p-2 rounded-full border border-border hover:border-foreground/50 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+          aria-label="Delete document"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
         <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
     </div>
